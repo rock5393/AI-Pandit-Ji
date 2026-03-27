@@ -1,0 +1,82 @@
+workflows:
+  ai-pandit-ji-android:
+    name: AI Pandit Ji Android
+    max_build_duration: 60
+    instance_type: linux_x2
+
+    environment:
+      java: 17
+      vars:
+        PACKAGE_NAME: "com.aipanditji.app"
+
+    scripts:
+      - name: Prepare Android web assets
+        script: |
+          mkdir -p app/shared/vendor
+          mkdir -p android-app/app/src/main/assets/web/shared/vendor
+
+          cp styles.css app/shared/styles.css
+          cp popup.js app/shared/popup.js
+          cp logo.svg app/shared/logo.svg
+          cp vendor/astronomy.browser.min.js app/shared/vendor/astronomy.browser.min.js
+          cp vendor/html2canvas.min.js app/shared/vendor/html2canvas.min.js
+
+          cp app/index.html android-app/app/src/main/assets/web/index.html
+          cp app/app.css android-app/app/src/main/assets/web/app.css
+          cp app/app-shell.js android-app/app/src/main/assets/web/app-shell.js
+          cp app/manifest.webmanifest android-app/app/src/main/assets/web/manifest.webmanifest
+          cp app/sw.js android-app/app/src/main/assets/web/sw.js
+
+          cp styles.css android-app/app/src/main/assets/web/shared/styles.css
+          cp popup.js android-app/app/src/main/assets/web/shared/popup.js
+          cp logo.svg android-app/app/src/main/assets/web/shared/logo.svg
+          cp vendor/astronomy.browser.min.js android-app/app/src/main/assets/web/shared/vendor/astronomy.browser.min.js
+          cp vendor/html2canvas.min.js android-app/app/src/main/assets/web/shared/vendor/html2canvas.min.js
+
+      - name: Prepare local.properties
+        working_directory: android-app
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
+      - name: Ensure Gradle wrapper is executable
+        working_directory: android-app
+        script: |
+          chmod +x gradlew || true
+
+      - name: Build Android debug APK
+        working_directory: android-app
+        script: |
+          ./gradlew assembleDebug
+
+      - name: Build Android release bundle
+        working_directory: android-app
+        script: |
+          ./gradlew bundleRelease
+
+    artifacts:
+      - android-app/app/build/outputs/**/*.apk
+      - android-app/app/build/outputs/**/*.aab
+      - android-app/app/build/outputs/**/mapping.txt
+
+    publishing:
+      email:
+        recipients:
+          - rockypatro@gofynd.com
+        notify:
+          success: true
+          failure: true
+
+# Optional release signing block for later:
+# 1) Upload your keystore in Codemagic -> Team settings -> codemagic.yaml settings -> Code signing identities.
+# 2) Then uncomment the block below and replace keystore_reference_name.
+#
+#    environment:
+#      java: 17
+#      android_signing:
+#        - keystore_reference_name
+#      vars:
+#        PACKAGE_NAME: "com.aipanditji.app"
+#
+# Your current android-app/app/build.gradle.kts also needs a signingConfig that reads:
+# CM_KEYSTORE_PATH, CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS, CM_KEY_PASSWORD.
+# Without that, Codemagic can build artifacts, but proper signed Play Store release setup is incomplete.
