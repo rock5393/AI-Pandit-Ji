@@ -1,0 +1,34 @@
+workflows:
+  android_webview_build:
+    name: AI Pandit Ji Android WebView
+    instance_type: linux_x2
+    max_build_duration: 60
+    environment:
+      java: 17
+      vars:
+        GRADLE_VERSION: "8.7"
+        APP_VERSION_NAME: "1.0.0"
+    scripts:
+      - name: Build Android artifacts
+        script: |
+          set -e
+          if command -v gradle >/dev/null 2>&1; then
+            GRADLE_CMD="$(command -v gradle)"
+          else
+            GRADLE_CMD="$(sh ./scripts/install-gradle.sh)"
+          fi
+          echo "Using Gradle: $GRADLE_CMD"
+          "$GRADLE_CMD" --version
+          "$GRADLE_CMD" --no-daemon clean :app:assembleDebug
+          if [ -n "$CM_KEYSTORE_PATH" ] && [ -n "$CM_KEYSTORE_PASSWORD" ] && [ -n "$CM_KEY_ALIAS" ] && [ -n "$CM_KEY_PASSWORD" ]; then
+            "$GRADLE_CMD" --no-daemon :app:bundleRelease
+          else
+            echo "Skipping signed release AAB because signing variables are not set in Codemagic."
+          fi
+    artifacts:
+      - app/build/outputs/**/*.apk
+      - app/build/outputs/**/*.aab
+      - app/build/reports/**
+    publishing:
+      email:
+        recipients: []
